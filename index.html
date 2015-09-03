@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Askia - Todo</title>
+        <meta charset="UTF-8">
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <div class="layout">
+            <div class="sidebar">
+                <ul id="lists">
+                    <li>
+                        <button id="new-list">New list</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="content">
+                <div class="card">
+                    <div class="list-label-container">
+                        <h3 id="list-label">No list selected</h3>
+                        <input type="text" id="list-label-input">
+                        <button id="edit-list-label">Edit</button>
+                    </div>
+                    <ul id="tasks"></ul>
+                </div>
+            </div>
+        </div>
+
+        <script>
+
+            /**
+             * Task class
+             * Manages the li element containing an editable label
+             * and a `done` checkbox
+             * @param {object} data a plain JSON task
+             */
+            function Task(data) {
+                // Map the plain data
+                this.label = data.label;
+                this.done = data.done;
+
+                // Create the list item
+                this.element = document.createElement('li');
+
+                // Create the label
+                this.labelElement = document.createElement('label');
+                this.labelElement.className = this.done ? 'done' : '';
+                this.labelElement.innerText = this.label;
+                this.labelElement.onclick = this.showInput.bind(this);
+
+                // Create the hidden input
+                this.input = document.createElement('input');
+                this.input.style.display = 'none';
+                this.input.value = this.label;
+                this.input.onkeyup = this.onKeyup.bind(this);
+                this.input.onblur = this.applyChanges.bind(this);
+
+                // Create the `done` checkbox
+                this.checkbox = document.createElement('input');
+                this.checkbox.type = "checkbox";
+                this.checkbox.checked = this.done;
+                this.checkbox.onclick = this.onCheckboxClick.bind(this);
+
+                // Append all in the li element
+                this.element.appendChild(this.checkbox);
+                this.element.appendChild(this.labelElement);
+                this.element.appendChild(this.input);
+            }
+
+            /**
+             * Returns the JSON version of the task
+             * @return {object} Plain JSON version of the task
+             */
+            Task.prototype.toJSON = function () {
+                return {
+                    label: this.label,
+                    done: this.done
+                };
+            };
+
+            /**
+             * Callback called on a click on the checkbox
+             * @return {undefined}
+             */
+            Task.prototype.onCheckboxClick = function () {
+                this.done = this.checkbox.checked;
+                this.labelElement.className = this.done ? 'done' : '';
+                Todo.save();
+            };
+
+            /**
+             * Display the task by adding it in the DOM
+             * @return {undefined}
+             */
+            Task.prototype.display = function () {
+                Todo.tasksList.appendChild(this.element);
+            };
+
+            /**
+             * Callback called on the keyup event of the hidden input
+             * @param  {Event} ev The keyup event
+             * @return {undefined}
+             */
+            Task.prototype.onKeyup = function (ev) {
+                // Hide the input on Enter keyup
+                if (ev.keyCode === 13) {
+                    this.applyChanges();
+                }
+            };
+
+            /**
+             * Apply the changes made using the input
+             * and switch back to label mode
+             * @return {undefined}
+             */
+            Task.prototype.applyChanges = function () {
+                this.label = this.input.value;
+                this.labelElement.innerText = this.input.value;
+                this.hideInput();
+                Todo.save();
+            };
+
+            /**
+             * Switch to label mode
+             * @return {undefined}
+             */
+            Task.prototype.hideInput = function () {
+                this.input.style.display = 'none';
+                this.labelElement.style.display = 'inline-block';
+            };
+
+            /**
+             * Switch to edit mode
+             * @return {undefined}
+             */
+            Task.prototype.showInput = function () {
+                this.input.style.display = 'inline-block';
+                this.labelElement.style.display = 'none';
+                this.input.focus();
+            };
+
+            /**
+             * List class
+             * Holds the tasks and manages the editable label
+             * of the list
+             * @param {object} data A plain JSON List
+             */
+            function List(data) {
+                // Map the plain JSON data
+                this.label = data.label;
+                this.tasks = data.tasks || [];
+
+                // Creates the li element and attach the events
+                this.element = document.createElement('li');
+                this.element.innerText = this.label;
+                this.element.onclick = this.select.bind(this);
+
+                // Creates the `add task` li
+                this.li = document.createElement('li');
+
+                // Creates the `add Task` button and attach the events
+                this.btn = document.createElement('button');
+                this.btn.innerText = "Add Task";
+                this.btn.onclick = this.newTask.bind(this);
+
+                // Append the li element and display the list
+                // by adding it to the DOM
+                this.li.appendChild(this.btn);
+                Todo.listsList.appendChild(this.element);
+            }
+
+            /**
+             * Returns the JSON version of the list
+             * @return {object} Plain JSON version of the list
+             */
+            List.prototype.toJSON = function () {
+                // Create a list of the JSON versions of its tasks
+                var t = this.tasks.map(function (task) {
+                    return task.toJSON();
+                });
+                return {
+                    label: this.label,
+                    tasks: t
+                };
+            };
+
+            /**
+             * Sets the value of the label
+             * @param {String} value The value to set
+             */
+            List.prototype.setLabel = function (value) {
+                this.label = value;
+                // Update the li inner text
+                this.element.innerText = value;
+                Todo.save();
+            };
+
+            /**
+             * Displays the list in the main view by updating the DOM
+             * @return {undefined}
+             */
+            List.prototype.display = function () {
+                // Empty the tasks list in the DOM
+                Todo.tasksList.innerHTML = '';
+
+                // Add the `add task` list item
+                Todo.tasksList.appendChild(this.li);
+
+                // Update the label in the DOM
+                Todo.setListLabel(this.label);
+
+                // Display all the tasks
+                for (var i in this.tasks) {
+                    this.tasks[i].display();
+                }
+            };
+
+            /**
+             * Set the selected list as this one
+             * @return {undefined}
+             */
+            List.prototype.select = function () {
+                Todo.currentList = this;
+                this.display();
+            };
+
+            /**
+             * Add a new task to this list
+             * @return {undefined}
+             */
+            List.prototype.newTask = function() {
+                var task = new Task({
+                    label: 'New Task',
+                    done: false
+                });
+                this.tasks.push(task);
+                task.display();
+                Todo.save();
+            };
+
+            // The Todo App object
+            var Todo = {};
+
+            /**
+             * Add a list
+             * @param {List} list A list object to add
+             */
+            Todo.addList = function addList(list) {
+                Todo.lists.push(list);
+            };
+
+            /**
+             * Creates a new List and adds it to the App
+             * @return {undefined}
+             */
+            Todo.newList = function newList () {
+                var list = new List({
+                    label: 'New List'
+                });
+                Todo.addList(list);
+                if (!Todo.currentList) {
+                    Todo.currentList = list;
+                }
+                list.display();
+                Todo.save();
+            };
+
+            /**
+             * Save the App data to the localStorage
+             * @return {undefined}
+             */
+            Todo.save = function save() {
+                var listsJSON = Todo.lists.map(function (list) {
+                    return list.toJSON();
+                });
+                window.localStorage.setItem('lists', JSON.stringify(listsJSON));
+            };
+
+            /**
+             * Load the App data from the localStorage
+             * @return {undefined}
+             */
+            Todo.load = function load() {
+                var lists = JSON.parse(window.localStorage.getItem('lists'));
+                if (lists && lists.length) {
+                    for (var i in lists) {
+                        lists[i].tasks = lists[i].tasks.map(function (taskData) {
+                            return new Task(taskData);
+                        });
+                        Todo.addList(new List(lists[i]));
+                    }
+                }
+            };
+
+            /**
+             * Update the editable label of the current list
+             * @param {String} value The value to apply
+             */
+            Todo.setListLabel = function (value) {
+                Todo.listLabel.innerText = value;
+                Todo.listLabelInput.value = value;
+            };
+
+            /**
+             * Switch the editable label to edit mode
+             * @return {undefined}
+             */
+            Todo.showLabelInput = function () {
+                Todo.listLabel.style.display = 'none';
+                Todo.listLabelInput.style.display = 'inline-block';
+            };
+
+            /**
+             * Switch the editable label to label mode
+             * @return {undefined}
+             */
+            Todo.hideLabelInput = function () {
+                Todo.listLabel.style.display = 'inline-block';
+                Todo.listLabelInput.style.display = 'none';
+            };
+
+            /**
+             * Apply the changes made during the edit mode
+             * of the editable label
+             * @return {undefined}
+             */
+            Todo.applyListLabelChanges = function () {
+                Todo.currentList.setLabel(Todo.listLabelInput.value);
+                Todo.setListLabel(Todo.listLabelInput.value);
+                Todo.hideLabelInput();
+            };
+
+            /**
+             * Get references to the DOM elements and binds the events
+             * @return {undefined}
+             */
+            Todo.init = function () {
+                // Get the DOM elements references
+                Todo.listLabel = document.getElementById('list-label');
+                Todo.tasksList = document.getElementById('tasks');
+                Todo.listsList = document.getElementById('lists');
+                Todo.listLabelInput = document.getElementById('list-label-input');
+                Todo.editListLabel = document.getElementById('edit-list-label');
+
+                Todo.currentList;
+                Todo.lists = [];
+
+                Todo.editListLabel.onclick = Todo.showLabelInput;
+
+                Todo.listLabelInput.onkeyup = function (ev) {
+                    if (ev.keyCode === 13) {
+                        Todo.applyListLabelChanges();
+                    }
+                };
+
+                Todo.listLabelInput.onblur = Todo.applyListLabelChanges;
+
+                Todo.newListBtn = document.getElementById('new-list');
+                Todo.newListBtn.onclick = Todo.newList;
+
+                Todo.load();
+            };
+
+            Todo.init();
+
+            // Register the service worker
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js').then(function(registration) {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }).catch(function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            }
+        </script>
+    </body>
+</html>

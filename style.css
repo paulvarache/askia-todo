@@ -1,0 +1,83 @@
+html, body {
+    font-family: 'Arial';
+    background-color: #EDEDED;
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+}
+
+h3 {
+    font-weight: 100;
+}
+
+ul {
+    list-style: none;
+    padding: 0;
+}
+
+button {
+    border-radius: 0px;
+    border: 1px solid gainsboro;
+    background-color: white;
+    padding: 5px 15px 5px 15px;
+}
+
+.layout {
+    display: flex;
+    height: 100%;
+}
+
+.sidebar {
+    width: 20%;
+    display: inline-block;
+    vertical-align: top;
+    background-color: white;
+    height: 100%;
+    text-align: center;
+}
+li {
+    padding: 7px;
+}
+.sidebar li:hover {
+    cursor: pointer;
+}
+.sidebar li:nth-child(odd) {
+
+}
+.content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    align-items: center;
+    align-content: center;
+}
+
+.card {
+    padding: 50px;
+    background-color: white;
+    margin-top: 30px;
+    flex: 1;
+    min-width: 640px;
+    box-shadow: 3px 3px 4px -3px #888;
+    text-align: center;
+}
+
+.done {
+    color: grey;
+    text-decoration: line-through;
+}
+#list-label {
+    display: inline-block;
+}
+#edit-list-label {
+    opacity: 0;
+    border: 0px;
+    color: grey;
+}
+.list-label-container:hover>#edit-list-label {
+    opacity: 1;
+}
+#list-label-input {
+    display: none;
+}
